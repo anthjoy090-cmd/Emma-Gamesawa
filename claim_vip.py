@@ -1,4 +1,4 @@
-"""Daily VIP reward claimer v12 - fast, no screenshots."""
+"""Daily VIP reward claimer v13 - fast, no screenshots, flexible ACCOUNTS format."""
 import json
 import multiprocessing
 import os
@@ -148,14 +148,56 @@ def run_pass(accts, final):
     return out
 
 
-def main():
-    if os.environ.get("ACCOUNTS"):
-        accounts = json.loads(os.environ["ACCOUNTS"])
-    else:
+def load_accounts():
+    """Reads the ACCOUNTS secret. Accepts any of these layouts:
+      1) a JSON list:  [{"phone":"0801...","password":"abc"},{...}]
+      2) one JSON object per line
+      3) simple lines:  08012345678 mypassword   (a comma instead of a space is OK)
+    """
+    raw = os.environ.get("ACCOUNTS", "").strip()
+    if not raw and os.path.exists("accounts.json"):
         with open("accounts.json") as f:
-            accounts = json.load(f)
+            raw = f.read().strip()
 
-    print(f"SCRIPT VERSION v12 (no screenshots) - {len(accounts)} accounts, "
+    def clean(a):
+        return {"phone": str(a["phone"]).strip(), "password": str(a["password"])}
+
+    try:                                   # layout 1 (or a single object)
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            data = [data]
+        accounts = [clean(a) for a in data]
+        if accounts:
+            return accounts
+    except Exception:
+        pass
+
+    accounts = []                          # layouts 2 and 3, line by line
+    for line in raw.splitlines():
+        line = line.strip().rstrip(",").strip()
+        if line in ("", "[", "]", "[]"):
+            continue
+        if line.startswith("{"):
+            try:
+                accounts.append(clean(json.loads(line)))
+                continue
+            except Exception:
+                pass
+        parts = line.replace(",", " ").replace(";", " ").split()
+        if len(parts) >= 2:
+            accounts.append({"phone": parts[0], "password": parts[1]})
+    if not accounts:
+        print("ERROR: no accounts found in the ACCOUNTS secret.\n"
+              "Put one account per line like this:\n"
+              "08012345678 mypassword", flush=True)
+        sys.exit(1)
+    return accounts
+
+
+def main():
+    accounts = load_accounts()
+
+    print(f"SCRIPT VERSION v13 (no screenshots, flexible accounts format) - {len(accounts)} accounts, "
           f"{WORKERS} workers", flush=True)
     start = time.time()
 
