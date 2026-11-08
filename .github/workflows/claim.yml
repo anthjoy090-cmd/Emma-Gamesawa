@@ -1,0 +1,18 @@
+name: Claim VIP reward
+on:
+  schedule:
+    - cron: "10 23 * * *"   # 23:10 UTC = 00:10 Nigeria time
+  workflow_dispatch:         # lets you start it manually
+jobs:
+  claim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install playwright && playwright install --with-deps chromium
+      - run: python claim_vip.py
+        env:
+          ACCOUNTS: ${{ secrets.ACCOUNTS }}
