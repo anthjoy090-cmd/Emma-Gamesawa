@@ -1,0 +1,23 @@
+name: Spin bonus
+on:
+  workflow_dispatch:         # MANUAL ONLY - there is no schedule in this file
+jobs:
+  spin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install playwright && playwright install --with-deps chromium
+      - run: python spin_fast.py
+        env:
+          ACCOUNTS: ${{ secrets.ACCOUNTS }}
+          WORKERS: "6"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spin-screenshots
+          path: "*.png"
+          if-no-files-found: ignore
